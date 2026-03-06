@@ -1,14 +1,19 @@
 package lens
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/png"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/google/uuid"
+	"golang.org/x/image/draw"
 )
 
 // ImageStore handles saving and loading images from the filesystem.
@@ -43,13 +48,114 @@ func (s *ImageStore) Save(data []byte) (string, error) {
 	return id, nil
 }
 
-// SaveWithID writes image data to a file with the given ID.
+// thumbVariants defines thumbnail size variants: suffix → max longest side in pixels.
+var thumbVariants = []struct {
+	suffix  string
+	maxSide int
+}{
+	{"_thumb", 256},
+	{"_medium", 512},
+	{"_lg", 1024},
+}
+
+// SaveWithID writes image data to a file with the given ID, then generates
+// thumbnail variants. Thumbnail failures are logged but don't fail the save.
 func (s *ImageStore) SaveWithID(id string, data []byte) error {
 	if err := validateID(id); err != nil {
 		return err
 	}
 	path := filepath.Join(s.dir, id+".png")
-	return os.WriteFile(path, data, 0644)
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return err
+	}
+	s.generateThumbnails(id, data)
+	return nil
+}
+
+func (s *ImageStore) generateThumbnails(id string, data []byte) {
+	src, err := png.Decode(bytes.NewReader(data))
+	if err != nil {
+		slog.Warn("thumbnail decode failed", "id", id, "error", err)
+		return
+	}
+
+	bounds := src.Bounds()
+	srcW, srcH := bounds.Dx(), bounds.Dy()
+
+	for _, v := range thumbVariants {
+		outPath := filepath.Join(s.dir, id+v.suffix+".png")
+
+		if srcW <= v.maxSide && srcH <= v.maxSide {
+			if err := os.WriteFile(outPath, data, 0644); err != nil {
+				slog.Warn("thumbnail copy failed", "id", id, "suffix", v.suffix, "error", err)
+			}
+			continue
+		}
+
+		newW, newH := fitDimensions(srcW, srcH, v.maxSide)
+		dst := image.NewRGBA(image.Rect(0, 0, newW, newH))
+		draw.CatmullRom.Scale(dst, dst.Bounds(), src, bounds, draw.Over, nil)
+
+		var buf bytes.Buffer
+		if err := png.Encode(&buf, dst); err != nil {
+			slog.Warn("thumbnail encode failed", "id", id, "suffix", v.suffix, "error", err)
+			continue
+		}
+		if err := os.WriteFile(outPath, buf.Bytes(), 0644); err != nil {
+			slog.Warn("thumbnail write failed", "id", id, "suffix", v.suffix, "error", err)
+		}
+	}
+}
+
+func fitDimensions(w, h, maxSide int) (int, int) {
+	if w >= h {
+		return maxSide, h * maxSide / w
+	}
+	return w * maxSide / h, maxSide
+}
+
+// BackfillThumbnails walks the image directory and generates missing thumbnails
+// for all existing full-size images. Returns the number of images processed.
+func (s *ImageStore) BackfillThumbnails() (int, error) {
+	entries, err := os.ReadDir(s.dir)
+	if err != nil {
+		return 0, fmt.Errorf("read image dir: %w", err)
+	}
+
+	count := 0
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".png") {
+			continue
+		}
+		base := strings.TrimSuffix(name, ".png")
+		if strings.HasSuffix(base, "_thumb") || strings.HasSuffix(base, "_medium") || strings.HasSuffix(base, "_lg") {
+			continue
+		}
+
+		allExist := true
+		for _, v := range thumbVariants {
+			variantPath := filepath.Join(s.dir, base+v.suffix+".png")
+			if _, err := os.Stat(variantPath); err != nil {
+				allExist = false
+				break
+			}
+		}
+		if allExist {
+			continue
+		}
+
+		data, err := os.ReadFile(filepath.Join(s.dir, name))
+		if err != nil {
+			slog.Warn("backfill skip", "file", name, "error", err)
+			continue
+		}
+
+		s.generateThumbnails(base, data)
+		count++
+	}
+
+	return count, nil
 }
 
 // validSizes maps query param values to file suffixes.
@@ -78,7 +184,6 @@ func (s *ImageStore) LoadSize(id, size string) ([]byte, error) {
 		if err == nil {
 			return data, nil
 		}
-		// Fall through to original if variant doesn't exist.
 	}
 
 	path := filepath.Join(s.dir, id+".png")

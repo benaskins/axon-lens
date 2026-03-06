@@ -1,6 +1,9 @@
 package lens_test
 
 import (
+	"bytes"
+	"image"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -170,6 +173,115 @@ func TestImageHandler_MethodNotAllowed(t *testing.T) {
 
 	if w.Code != http.StatusMethodNotAllowed {
 		t.Errorf("status = %d, want %d", w.Code, http.StatusMethodNotAllowed)
+	}
+}
+
+func createTestPNG(t *testing.T, width, height int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func TestImageStore_SaveWithID_GeneratesThumbnails(t *testing.T) {
+	dir := t.TempDir()
+	store := mustNewImageStore(t, dir)
+
+	data := createTestPNG(t, 2048, 1024)
+	err := store.SaveWithID("img1", data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should have generated three thumbnail variants
+	variants := []struct {
+		suffix  string
+		maxSide int
+	}{
+		{"_thumb", 256},
+		{"_medium", 512},
+		{"_lg", 1024},
+	}
+
+	for _, v := range variants {
+		path := filepath.Join(dir, "img1"+v.suffix+".png")
+		thumbData, err := os.ReadFile(path)
+		if err != nil {
+			t.Errorf("expected %s variant to exist: %v", v.suffix, err)
+			continue
+		}
+
+		img, err := png.Decode(bytes.NewReader(thumbData))
+		if err != nil {
+			t.Errorf("failed to decode %s variant: %v", v.suffix, err)
+			continue
+		}
+
+		bounds := img.Bounds()
+		longestSide := bounds.Dx()
+		if bounds.Dy() > longestSide {
+			longestSide = bounds.Dy()
+		}
+		if longestSide != v.maxSide {
+			t.Errorf("%s: longest side = %d, want %d", v.suffix, longestSide, v.maxSide)
+		}
+	}
+}
+
+func TestImageStore_SaveWithID_SkipsThumbnailsForSmallImages(t *testing.T) {
+	dir := t.TempDir()
+	store := mustNewImageStore(t, dir)
+
+	// Image smaller than all variant sizes — variants should be copies
+	data := createTestPNG(t, 100, 80)
+	err := store.SaveWithID("small", data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// All variants should exist and match the original size
+	for _, suffix := range []string{"_thumb", "_medium", "_lg"} {
+		path := filepath.Join(dir, "small"+suffix+".png")
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("expected %s variant to exist", suffix)
+		}
+	}
+}
+
+func TestImageStore_BackfillThumbnails(t *testing.T) {
+	dir := t.TempDir()
+	store := mustNewImageStore(t, dir)
+
+	// Write a PNG directly without going through SaveWithID
+	data := createTestPNG(t, 2048, 1024)
+	os.WriteFile(filepath.Join(dir, "backfill-test.png"), data, 0644)
+
+	count, err := store.BackfillThumbnails()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 1 {
+		t.Errorf("backfilled %d, want 1", count)
+	}
+
+	// Variants should now exist
+	for _, suffix := range []string{"_thumb", "_medium", "_lg"} {
+		path := filepath.Join(dir, "backfill-test"+suffix+".png")
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("expected %s variant after backfill", suffix)
+		}
+	}
+
+	// Running again should find nothing to do
+	count, err = store.BackfillThumbnails()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Errorf("second backfill processed %d, want 0", count)
 	}
 }
 
