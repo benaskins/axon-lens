@@ -1,6 +1,6 @@
 # axon-lens
 
-Image generation tools for LLM-powered agents.
+Image generation tools for LLM-powered agents. Part of [lamina](https://github.com/benaskins/lamina) — each axon package can be used independently.
 
 Handles prompt merging, image storage, gallery management, and task submission for image generation pipelines.
 
