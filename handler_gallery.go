@@ -56,8 +56,6 @@ func (h *galleryListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Prompt         string  `json:"prompt"`
 		Model          string  `json:"model"`
 		ConversationID *string `json:"conversation_id"`
-		IsBase         bool    `json:"is_base"`
-		NSFWDetected   bool    `json:"nsfw_detected"`
 		CreatedAt      string  `json:"created_at"`
 	}
 
@@ -70,92 +68,9 @@ func (h *galleryListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Prompt:         img.Prompt,
 			Model:          img.Model,
 			ConversationID: img.ConversationID,
-			IsBase:         img.IsBase,
-			NSFWDetected:   img.NSFWDetected,
 			CreatedAt:      img.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"images": response})
-}
-
-// GetBaseImageHandler returns an http.Handler for GET /api/agents/{slug}/gallery/base.
-func GetBaseImageHandler(store GalleryStore, userID UserIDFunc) http.Handler {
-	return &getBaseImageHandler{store: store, userID: userID}
-}
-
-type getBaseImageHandler struct {
-	store  GalleryStore
-	userID UserIDFunc
-}
-
-func (h *getBaseImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-
-	uid := h.userID(r.Context())
-	slug := r.PathValue("slug")
-	if slug == "" {
-		writeError(w, http.StatusBadRequest, "slug required")
-		return
-	}
-
-	img, err := h.store.GetBaseImageByUser(uid, slug)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to get base image")
-		return
-	}
-
-	if img == nil {
-		writeError(w, http.StatusNotFound, "no base image set")
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]any{
-		"id":      img.ID,
-		"url":     "/api/images/" + img.ID,
-		"is_base": true,
-	})
-}
-
-// SetBaseImageHandler returns an http.Handler for PUT /api/agents/{slug}/gallery/{id}/base.
-func SetBaseImageHandler(store GalleryStore, userID UserIDFunc) http.Handler {
-	return &setBaseImageHandler{store: store, userID: userID}
-}
-
-type setBaseImageHandler struct {
-	store  GalleryStore
-	userID UserIDFunc
-}
-
-func (h *setBaseImageHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPut {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-
-	uid := h.userID(r.Context())
-	slug := r.PathValue("slug")
-	imageID := r.PathValue("id")
-
-	if slug == "" || imageID == "" {
-		writeError(w, http.StatusBadRequest, "slug and id required")
-		return
-	}
-
-	// Verify image belongs to this user's agent
-	img, err := h.store.GetGalleryImage(imageID)
-	if err != nil || img == nil || img.AgentSlug != slug || img.UserID != uid {
-		writeError(w, http.StatusNotFound, "image not found")
-		return
-	}
-
-	if err := h.store.SetBaseImage(uid, slug, imageID); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to set base image")
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
 }

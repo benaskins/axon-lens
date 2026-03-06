@@ -14,7 +14,7 @@ func TestGalleryImageFields(t *testing.T) {
 		AgentSlug: "helper",
 		UserID:    "user-1",
 		Prompt:    "a sunset",
-		Model:     "sdxl",
+		Model:     "flux-schnell",
 		CreatedAt: time.Now(),
 	}
 
@@ -43,15 +43,13 @@ func TestImageTaskSubmissionFields(t *testing.T) {
 
 type stubGalleryStore struct{}
 
-func (s *stubGalleryStore) SaveGalleryImage(img lens.GalleryImage) error                  { return nil }
-func (s *stubGalleryStore) GetGalleryImage(id string) (*lens.GalleryImage, error)          { return nil, nil }
+func (s *stubGalleryStore) SaveGalleryImage(img lens.GalleryImage) error { return nil }
+func (s *stubGalleryStore) GetGalleryImage(id string) (*lens.GalleryImage, error) {
+	return nil, nil
+}
 func (s *stubGalleryStore) ListGalleryImagesByUser(userID, slug string) ([]lens.GalleryImage, error) {
 	return nil, nil
 }
-func (s *stubGalleryStore) GetBaseImageByUser(userID, slug string) (*lens.GalleryImage, error) {
-	return nil, nil
-}
-func (s *stubGalleryStore) SetBaseImage(userID, slug, imageID string) error { return nil }
 
 type stubTaskSubmitter struct{}
 

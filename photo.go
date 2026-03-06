@@ -16,15 +16,12 @@ type GalleryImage struct {
 	ConversationID *string   `json:"conversation_id"`
 	Prompt         string    `json:"prompt"`
 	Model          string    `json:"model"`
-	IsBase         bool      `json:"is_base"`
-	NSFWDetected   bool      `json:"nsfw_detected"`
 	CreatedAt      time.Time `json:"created_at"`
 }
 
 // ImageTaskSubmission holds the parameters for an image generation task.
 type ImageTaskSubmission struct {
 	Prompt         string `json:"prompt"`
-	ReferenceImage string `json:"reference_image,omitempty"`
 	AgentSlug      string `json:"agent_slug"`
 	UserID         string `json:"user_id"`
 	ConversationID string `json:"conversation_id,omitempty"`
@@ -51,13 +48,11 @@ func NewImageTaskRequest(params *ImageTaskSubmission) *TaskSubmitRequest {
 	}
 }
 
-// GalleryStore persists gallery images and base image selections.
+// GalleryStore persists gallery images.
 type GalleryStore interface {
 	SaveGalleryImage(img GalleryImage) error
 	GetGalleryImage(id string) (*GalleryImage, error)
 	ListGalleryImagesByUser(userID string, agentSlug string) ([]GalleryImage, error)
-	GetBaseImageByUser(userID string, agentSlug string) (*GalleryImage, error)
-	SetBaseImage(userID string, agentSlug string, imageID string) error
 }
 
 // MessageStore provides access to recent conversation messages

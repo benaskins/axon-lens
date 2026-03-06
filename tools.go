@@ -2,7 +2,6 @@ package lens
 
 import (
 	"context"
-	"encoding/base64"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -13,10 +12,8 @@ import (
 // Config holds dependencies for building photo tools.
 type Config struct {
 	TaskSubmitter TaskSubmitter
-	PromptMerger  *PromptMerger  // nil = no prompt merging
-	ImageStore    *ImageStore    // nil = no ref image loading
-	GalleryStore  GalleryStore   // nil = no base image
-	MessageStore  MessageStore   // nil = no recent message context
+	PromptMerger  *PromptMerger // nil = no prompt merging
+	MessageStore  MessageStore  // nil = no recent message context
 	OnTaskStarted func(taskID, taskType, description string)
 	StartPoll     func(taskID string)
 }
@@ -63,20 +60,8 @@ func submitImageTask(cfg *Config, ctx *tool.ToolContext, promptStr string) tool.
 		}
 	}
 
-	var refImageB64 string
-	if ctx.AgentSlug != "" && cfg.GalleryStore != nil && cfg.ImageStore != nil {
-		if baseImg, err := cfg.GalleryStore.GetBaseImageByUser(ctx.UserID, ctx.AgentSlug); err == nil && baseImg != nil {
-			if imgData, err := cfg.ImageStore.Load(baseImg.ID); err == nil {
-				refImageB64 = base64.StdEncoding.EncodeToString(imgData)
-			} else {
-				slog.Warn("failed to load base image", "error", err, "base_image_id", baseImg.ID)
-			}
-		}
-	}
-
 	submission := &ImageTaskSubmission{
 		Prompt:         finalPrompt,
-		ReferenceImage: refImageB64,
 		AgentSlug:      ctx.AgentSlug,
 		UserID:         ctx.UserID,
 		ConversationID: ctx.ConversationID,

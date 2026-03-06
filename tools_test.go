@@ -105,53 +105,12 @@ func TestTakePhotoTool_WithPromptMerger(t *testing.T) {
 	if result.Content == "" {
 		t.Error("expected non-empty result")
 	}
-	// Verify the merged prompt was used (check submission params)
 	if submitter.lastReq == nil {
 		t.Fatal("expected task submission")
 	}
 	params := submitter.lastReq.Params.(*lens.ImageTaskSubmission)
 	if params.Prompt != "merged prompt" {
 		t.Errorf("Prompt = %q, want %q", params.Prompt, "merged prompt")
-	}
-}
-
-func TestTakePhotoTool_WithBaseImage(t *testing.T) {
-	submitter := &mockTaskSubmitter{}
-	store := newMemGalleryStore()
-	store.SaveGalleryImage(lens.GalleryImage{
-		ID:        "base-img",
-		AgentSlug: "bot",
-		UserID:    "user-1",
-	})
-	store.SetBaseImage("user-1", "bot", "base-img")
-
-	dir := testing.TB.TempDir(t)
-	imgStore, err := lens.NewImageStore(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	imgStore.SaveWithID("base-img", []byte("ref image data"))
-
-	cfg := &lens.Config{
-		TaskSubmitter: submitter,
-		GalleryStore:  store,
-		ImageStore:    imgStore,
-	}
-
-	td := lens.TakePhotoTool(cfg)
-	ctx := &tool.ToolContext{
-		Ctx:       context.Background(),
-		UserID:    "user-1",
-		AgentSlug: "bot",
-	}
-	td.Execute(ctx, map[string]any{"prompt": "test"})
-
-	if submitter.lastReq == nil {
-		t.Fatal("expected task submission")
-	}
-	params := submitter.lastReq.Params.(*lens.ImageTaskSubmission)
-	if params.ReferenceImage == "" {
-		t.Error("expected reference image to be populated")
 	}
 }
 

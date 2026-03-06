@@ -34,14 +34,6 @@ func (f *fakeGalleryStore) ListGalleryImagesByUser(userID, agentSlug string) ([]
 	return nil, nil
 }
 
-func (f *fakeGalleryStore) GetBaseImageByUser(userID, agentSlug string) (*lens.GalleryImage, error) {
-	return nil, nil
-}
-
-func (f *fakeGalleryStore) SetBaseImage(userID, agentSlug, imageID string) error {
-	return nil
-}
-
 func TestImageWorker_Execute(t *testing.T) {
 	dir := t.TempDir()
 	imgStore := mustNewImageStore(t, dir)
