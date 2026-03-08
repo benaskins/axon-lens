@@ -1,63 +1,47 @@
 # axon-lens
 
-Image generation pipeline for LLM-powered agents. Part of [lamina](https://github.com/benaskins/lamina) — each axon package can be used independently.
+> Primitives · Part of the [lamina](https://github.com/benaskins/lamina-mono) workspace
 
-Generates images via FLUX.1 on Apple Silicon (MLX), with prompt merging, thumbnail generation, and gallery management.
+Image generation pipeline for Apple Silicon. Provides an `ImageGenerator` interface with a FLUX.1 implementation via [flux.swift](https://github.com/filipstrand/mluX), local image storage with automatic thumbnail variants, gallery management, LLM-based prompt merging, and a ready-made tool definition for LLM agents.
 
-## Install
+## Getting started
 
-```
+```bash
 go get github.com/benaskins/axon-lens@latest
 ```
 
 Requires Go 1.24+.
 
-## Usage
-
-### As an LLM tool
-
 ```go
-cfg := &lens.Config{
-    TaskSubmitter: submitter,
-    PromptMerger:  promptMerger,
-}
-
-tools := map[string]tool.ToolDef{
-    "take_photo": lens.TakePhotoTool(cfg),
-}
-```
-
-### As a task worker
-
-```go
-fluxGen := &lens.FluxGenerator{
+gen := &lens.FluxGenerator{
     BinaryPath: "flux",
     Model:      "schnell",
     Width:      1024,
     Height:     1024,
     Steps:      4,
-    Quantize:   true,
 }
 
-worker := &lens.ImageWorker{
-    Generator: fluxGen,
-    Images:    imgStore,
-    Gallery:   galleryStore,
+data, err := gen.GenerateImage(ctx, "a red fox in a snowy forest")
+if err != nil {
+    log.Fatal(err)
 }
 
-executor.RegisterWorker("image_generation", worker)
+store, _ := lens.NewImageStore("/tmp/images")
+id, _ := store.Save(data)
+fmt.Println("saved:", id)
 ```
 
-### Key types
+## Key types
 
-- `ImageGenerator` — interface for image generation backends
-- `FluxGenerator` — FLUX.1 implementation via flux.swift CLI
-- `ImageWorker` — task worker (generate → save → gallery record)
-- `ImageStore` — local image file storage with thumbnails
-- `PromptMerger` — LLM-based prompt merging with baseline rules
-- `TakePhotoTool()` — tool constructor for LLM agents
-- `GalleryListHandler()` — HTTP handler for gallery listing
+- **`ImageGenerator`** — interface for image generation backends (`GenerateImage(ctx, prompt) ([]byte, error)`)
+- **`FluxGenerator`** — FLUX.1 implementation that shells out to the flux.swift CLI
+- **`ImageStore`** — filesystem storage with automatic thumbnail generation (256px, 512px, 1024px variants)
+- **`ImageWorker`** — task worker compatible with axon-task (generate, save, record in gallery)
+- **`PromptMerger`** — merges baseline rules, agent context, and scene descriptions via an LLM
+- **`TakePhotoTool()`** — returns an axon-tool `ToolDef` for LLM agents
+- **`GalleryStore`** — interface for persisting gallery image metadata
+- **`GalleryListHandler()`** / **`ImageHandler()`** — HTTP handlers for serving images and gallery listings
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT
