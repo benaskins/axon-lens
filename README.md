@@ -38,7 +38,7 @@ fmt.Println("saved:", id)
 - **`ImageStore`** — filesystem storage with automatic thumbnail generation (256px, 512px, 1024px variants)
 - **`ImageWorker`** — task worker compatible with axon-task (generate, save, record in gallery)
 - **`PromptMerger`** — merges baseline rules, agent context, and scene descriptions via an LLM
-- **`TakePhotoTool()`** — returns an axon-tool `ToolDef` for LLM agents
+- **`TakePhotoTool(cfg)`** — returns an axon-tool `ToolDef` for LLM agents (requires a `*Config`)
 - **`GalleryStore`** — interface for persisting gallery image metadata
 - **`GalleryListHandler()`** / **`ImageHandler()`** — HTTP handlers for serving images and gallery listings
 
