@@ -42,11 +42,7 @@ func TestImageWorker_Execute(t *testing.T) {
 	gallery := &fakeGalleryStore{}
 	gen := &stubImageGen{data: pngData}
 
-	worker := &lens.ImageWorker{
-		Generator: gen,
-		Images:    imgStore,
-		Gallery:   gallery,
-	}
+	worker := lens.NewImageWorker(gen, imgStore, lens.WithGallery(gallery))
 
 	params := lens.ImageTaskParams{
 		Prompt:    "a test image",
@@ -83,7 +79,7 @@ func TestImageWorker_Execute(t *testing.T) {
 }
 
 func TestImageWorker_Execute_EmptyPrompt(t *testing.T) {
-	worker := &lens.ImageWorker{}
+	worker := lens.NewImageWorker(nil, nil)
 
 	params := lens.ImageTaskParams{ImageID: "img-001"}
 	raw, _ := json.Marshal(params)
@@ -95,7 +91,7 @@ func TestImageWorker_Execute_EmptyPrompt(t *testing.T) {
 }
 
 func TestImageWorker_Execute_EmptyImageID(t *testing.T) {
-	worker := &lens.ImageWorker{}
+	worker := lens.NewImageWorker(nil, nil)
 
 	params := lens.ImageTaskParams{Prompt: "test"}
 	raw, _ := json.Marshal(params)
@@ -111,11 +107,7 @@ func TestImageWorker_Execute_NilGallery(t *testing.T) {
 	imgStore := mustNewImageStore(t, dir)
 	pngData := createTestPNG(t, 64, 64)
 
-	worker := &lens.ImageWorker{
-		Generator: &stubImageGen{data: pngData},
-		Images:    imgStore,
-		Gallery:   nil,
-	}
+	worker := lens.NewImageWorker(&stubImageGen{data: pngData}, imgStore)
 
 	params := lens.ImageTaskParams{
 		Prompt:  "test",

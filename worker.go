@@ -17,9 +17,31 @@ type ImageTaskParams struct {
 
 // ImageWorker executes image generation tasks.
 type ImageWorker struct {
-	Generator    ImageGenerator
-	Images       *ImageStore
-	Gallery      GalleryStore
+	generator ImageGenerator
+	images    *ImageStore
+	gallery   GalleryStore
+}
+
+// NewImageWorker creates an ImageWorker with required dependencies.
+func NewImageWorker(gen ImageGenerator, images *ImageStore, opts ...ImageWorkerOption) *ImageWorker {
+	w := &ImageWorker{
+		generator: gen,
+		images:    images,
+	}
+	for _, opt := range opts {
+		opt(w)
+	}
+	return w
+}
+
+// ImageWorkerOption configures an ImageWorker during construction.
+type ImageWorkerOption func(*ImageWorker)
+
+// WithGallery sets the gallery store for recording generated images.
+func WithGallery(g GalleryStore) ImageWorkerOption {
+	return func(w *ImageWorker) {
+		w.gallery = g
+	}
 }
 
 // Execute generates an image and saves it. The params argument is
@@ -40,23 +62,23 @@ func (w *ImageWorker) Execute(ctx context.Context, params json.RawMessage) error
 
 	slog.Info("generating image", "image_id", p.ImageID, "prompt_len", len(p.Prompt))
 
-	data, err := w.Generator.GenerateImage(ctx, p.Prompt)
+	data, err := w.generator.GenerateImage(ctx, p.Prompt)
 	if err != nil {
 		return fmt.Errorf("generate image: %w", err)
 	}
 
-	if err := w.Images.SaveWithID(p.ImageID, data); err != nil {
+	if err := w.images.SaveWithID(p.ImageID, data); err != nil {
 		return fmt.Errorf("save image: %w", err)
 	}
 
-	if w.Gallery != nil {
+	if w.gallery != nil {
 		img := GalleryImage{
 			ID:        p.ImageID,
 			AgentSlug: p.AgentSlug,
 			UserID:    p.UserID,
 			Prompt:    p.Prompt,
 		}
-		if err := w.Gallery.SaveGalleryImage(img); err != nil {
+		if err := w.gallery.SaveGalleryImage(img); err != nil {
 			slog.Warn("failed to save gallery record", "error", err, "image_id", p.ImageID)
 		}
 	}
