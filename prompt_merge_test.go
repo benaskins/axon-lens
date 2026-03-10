@@ -39,7 +39,7 @@ func TestPromptMerger_MergePrompt(t *testing.T) {
 		{Role: "assistant", Content: "hi there"},
 	}
 
-	result, err := merger.MergePrompt("you are helpful", messages, "a sunset")
+	result, err := merger.MergePrompt(context.Background(), "you are helpful", messages, "a sunset")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestPromptMerger_TrimsWhitespace(t *testing.T) {
 		MergeInstruction: "{scene}",
 	})
 
-	result, err := merger.MergePrompt("", nil, "test")
+	result, err := merger.MergePrompt(context.Background(), "", nil, "test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestPromptMerger_EmptyMessages(t *testing.T) {
 		MergeInstruction: "conv={conversation}",
 	})
 
-	_, err := merger.MergePrompt("", nil, "test")
+	_, err := merger.MergePrompt(context.Background(), "", nil, "test")
 	if err != nil {
 		t.Fatal(err)
 	}

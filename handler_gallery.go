@@ -33,6 +33,10 @@ func (h *galleryListHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uid := h.userID(r.Context())
+	if uid == "" {
+		writeError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
 	slug := r.PathValue("slug")
 	if slug == "" {
 		writeError(w, http.StatusBadRequest, "slug required")

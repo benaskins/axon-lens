@@ -50,7 +50,7 @@ func NewPromptMerger(generate tool.TextGenerator, config *ImageGenConfig) *Promp
 
 // MergePrompt intelligently merges baseline, agent system prompt, recent conversation,
 // and scene into a single image generation prompt.
-func (m *PromptMerger) MergePrompt(systemPrompt string, recentMessages []Message, scene string) (string, error) {
+func (m *PromptMerger) MergePrompt(ctx context.Context, systemPrompt string, recentMessages []Message, scene string) (string, error) {
 	if m.config == nil {
 		return scene, fmt.Errorf("no config loaded")
 	}
@@ -75,7 +75,7 @@ func (m *PromptMerger) MergePrompt(systemPrompt string, recentMessages []Message
 	)
 	instruction := replacer.Replace(m.config.MergeInstruction)
 
-	result, err := m.generate(context.Background(), instruction)
+	result, err := m.generate(ctx, instruction)
 	if err != nil {
 		return "", fmt.Errorf("merge LLM call failed: %w", err)
 	}

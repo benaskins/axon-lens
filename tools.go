@@ -1,7 +1,6 @@
 package lens
 
 import (
-	"context"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -52,7 +51,7 @@ func submitImageTask(cfg *Config, ctx *tool.ToolContext, promptStr string) tool.
 			}
 		}
 
-		merged, err := cfg.PromptMerger.MergePrompt(ctx.SystemPrompt, recentMessages, promptStr)
+		merged, err := cfg.PromptMerger.MergePrompt(ctx.Ctx, ctx.SystemPrompt, recentMessages, promptStr)
 		if err == nil {
 			finalPrompt = merged
 		} else {
@@ -68,7 +67,7 @@ func submitImageTask(cfg *Config, ctx *tool.ToolContext, promptStr string) tool.
 		ImageID:        imageID,
 	}
 
-	_, err := cfg.TaskSubmitter.SubmitTask(context.Background(), NewImageTaskRequest(submission))
+	_, err := cfg.TaskSubmitter.SubmitTask(ctx.Ctx, NewImageTaskRequest(submission))
 	if err != nil {
 		slog.Error("failed to submit image task", "error", err, "image_id", imageID)
 		return tool.ToolResult{Content: "Error: failed to submit image generation task"}

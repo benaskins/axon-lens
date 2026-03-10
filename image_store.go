@@ -16,6 +16,9 @@ import (
 	"golang.org/x/image/draw"
 )
 
+// MaxImageSize is the maximum allowed image data size (20 MB).
+const MaxImageSize = 20 * 1024 * 1024
+
 // ImageStore handles saving and loading images from the filesystem.
 type ImageStore struct {
 	dir string
@@ -40,6 +43,9 @@ func validateID(id string) error {
 
 // Save writes image data to a new file and returns its ID.
 func (s *ImageStore) Save(data []byte) (string, error) {
+	if len(data) > MaxImageSize {
+		return "", fmt.Errorf("image data exceeds maximum size of %d bytes", MaxImageSize)
+	}
 	id := uuid.New().String()
 	path := filepath.Join(s.dir, id+".png")
 	if err := os.WriteFile(path, data, 0644); err != nil {
@@ -63,6 +69,9 @@ var thumbVariants = []struct {
 func (s *ImageStore) SaveWithID(id string, data []byte) error {
 	if err := validateID(id); err != nil {
 		return err
+	}
+	if len(data) > MaxImageSize {
+		return fmt.Errorf("image data exceeds maximum size of %d bytes", MaxImageSize)
 	}
 	path := filepath.Join(s.dir, id+".png")
 	if err := os.WriteFile(path, data, 0644); err != nil {

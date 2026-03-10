@@ -285,6 +285,39 @@ func TestImageStore_BackfillThumbnails(t *testing.T) {
 	}
 }
 
+func TestImageStore_Save_RejectsOversizedData(t *testing.T) {
+	dir := t.TempDir()
+	store := mustNewImageStore(t, dir)
+
+	oversized := make([]byte, lens.MaxImageSize+1)
+	_, err := store.Save(oversized)
+	if err == nil {
+		t.Error("expected error for oversized image data")
+	}
+}
+
+func TestImageStore_SaveWithID_RejectsOversizedData(t *testing.T) {
+	dir := t.TempDir()
+	store := mustNewImageStore(t, dir)
+
+	oversized := make([]byte, lens.MaxImageSize+1)
+	err := store.SaveWithID("test-id", oversized)
+	if err == nil {
+		t.Error("expected error for oversized image data")
+	}
+}
+
+func TestImageStore_Save_AcceptsMaxSize(t *testing.T) {
+	dir := t.TempDir()
+	store := mustNewImageStore(t, dir)
+
+	data := make([]byte, lens.MaxImageSize)
+	_, err := store.Save(data)
+	if err != nil {
+		t.Errorf("expected save to succeed at max size: %v", err)
+	}
+}
+
 func TestImageStore_SaveWithID_RejectsPathTraversal(t *testing.T) {
 	dir := t.TempDir()
 	store := mustNewImageStore(t, dir)

@@ -10,10 +10,12 @@ import (
 
 type mockTaskSubmitter struct {
 	lastReq *lens.TaskSubmitRequest
+	lastCtx context.Context
 }
 
 func (m *mockTaskSubmitter) SubmitTask(ctx context.Context, req *lens.TaskSubmitRequest) (*lens.TaskSubmission, error) {
 	m.lastReq = req
+	m.lastCtx = ctx
 	return &lens.TaskSubmission{TaskID: "task-1", Status: "queued"}, nil
 }
 
@@ -111,6 +113,28 @@ func TestTakePhotoTool_WithPromptMerger(t *testing.T) {
 	params := submitter.lastReq.Params.(*lens.ImageTaskSubmission)
 	if params.Prompt != "merged prompt" {
 		t.Errorf("Prompt = %q, want %q", params.Prompt, "merged prompt")
+	}
+}
+
+func TestTakePhotoTool_PropagatesCallerContext(t *testing.T) {
+	type ctxKey string
+	submitter := &mockTaskSubmitter{}
+	cfg := &lens.Config{TaskSubmitter: submitter}
+
+	td := lens.TakePhotoTool(cfg)
+	callerCtx := context.WithValue(context.Background(), ctxKey("trace"), "abc123")
+	ctx := &tool.ToolContext{
+		Ctx:    callerCtx,
+		UserID: "user-1",
+	}
+
+	td.Execute(ctx, map[string]any{"prompt": "test"})
+
+	if submitter.lastCtx == nil {
+		t.Fatal("expected context to be passed to SubmitTask")
+	}
+	if submitter.lastCtx.Value(ctxKey("trace")) != "abc123" {
+		t.Error("expected caller context to be propagated, not context.Background()")
 	}
 }
 
