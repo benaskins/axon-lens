@@ -99,6 +99,22 @@ func TestGalleryListHandler_EmptyGallery(t *testing.T) {
 	}
 }
 
+func TestGalleryListHandler_EmptyUserID(t *testing.T) {
+	store := newMemGalleryStore()
+	emptyUserID := func(ctx context.Context) string { return "" }
+	handler := lens.GalleryListHandler(store, emptyUserID)
+	mux := http.NewServeMux()
+	mux.Handle("GET /api/agents/{slug}/gallery", handler)
+
+	req := httptest.NewRequest("GET", "/api/agents/bot/gallery", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsStr(s, substr))
 }
