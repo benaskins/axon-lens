@@ -10,7 +10,7 @@ Image generation pipeline for Apple Silicon. Provides an `ImageGenerator` interf
 go get github.com/benaskins/axon-lens@latest
 ```
 
-Requires Go 1.24+.
+Requires Go 1.26+. Depends on [axon-tool](https://github.com/benaskins/axon-tool) for tool definitions.
 
 ```go
 gen := &lens.FluxGenerator{
