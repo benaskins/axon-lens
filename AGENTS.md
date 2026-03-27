@@ -1,3 +1,8 @@
+---
+module: github.com/benaskins/axon-lens
+kind: library
+---
+
 # axon-lens
 
 Image generation pipeline — prompt merging, FLUX.1 via MLX, gallery storage.
