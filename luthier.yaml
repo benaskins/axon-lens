@@ -1,0 +1,10 @@
+name: axon-lens
+purpose: Image generation pipeline (FLUX.1 via MLX)
+use_when: Image generation
+deterministic: false
+snippet:
+  imports:
+    - path: github.com/benaskins/axon-lens
+      alias: lens
+  requires:
+    - github.com/benaskins/axon-lens
