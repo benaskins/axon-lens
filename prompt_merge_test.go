@@ -99,7 +99,6 @@ func TestLoadImageGenConfig(t *testing.T) {
 	config := lens.ImageGenConfig{
 		BaselinePrompt:   "base",
 		MergeInstruction: "merge {baseline} {scene}",
-		MergeModel:       "llama3",
 	}
 	data, _ := json.Marshal(config)
 
@@ -117,9 +116,6 @@ func TestLoadImageGenConfig(t *testing.T) {
 	}
 	if loaded.BaselinePrompt != "base" {
 		t.Errorf("BaselinePrompt = %q, want %q", loaded.BaselinePrompt, "base")
-	}
-	if loaded.MergeModel != "llama3" {
-		t.Errorf("MergeModel = %q, want %q", loaded.MergeModel, "llama3")
 	}
 }
 

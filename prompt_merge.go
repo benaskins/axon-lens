@@ -15,7 +15,6 @@ import (
 // ImageGenConfig holds configuration for image generation baseline rules.
 type ImageGenConfig struct {
 	BaselinePrompt   string `json:"baseline_prompt"`
-	MergeModel       string `json:"merge_model"`
 	MergeInstruction string `json:"merge_instruction"`
 }
 
