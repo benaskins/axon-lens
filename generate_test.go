@@ -15,30 +15,12 @@ func TestFluxGenerator_GenerateImage(t *testing.T) {
 	tmpDir := t.TempDir()
 	fakeBin := filepath.Join(tmpDir, "fake-flux")
 
-	// Script: find --output arg and write a minimal PNG there
-	script := `#!/bin/bash
-output=""
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --output) output="$2"; shift 2 ;;
-    *) shift ;;
-  esac
-done
-if [ -z "$output" ]; then
-  echo "no --output specified" >&2
-  exit 1
-fi
-# Write a minimal valid PNG (1x1 red pixel)
-printf '\x89PNG\r\n\x1a\n' > "$output"
-# Append enough to be readable (use a real tiny PNG)
-cp "` + filepath.Join(tmpDir, "test.png") + `" "$output"
-`
 	// Create a real tiny PNG for the fake binary to copy
 	pngData := createTestPNG(t, 64, 64)
 	os.WriteFile(filepath.Join(tmpDir, "test.png"), pngData, 0644)
 
-	// Rewrite script to just copy the test PNG
-	script = `#!/bin/bash
+	// Script: find --output arg and copy the test PNG there
+	script := `#!/bin/bash
 output=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
