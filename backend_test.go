@@ -176,6 +176,92 @@ func TestGenerateRequestDefaults(t *testing.T) {
 	}
 }
 
+// TestFluxBackendScriptInvocation uses a fake binary to exercise the happy path.
+func TestFluxBackendScriptInvocation(t *testing.T) {
+	dir := t.TempDir()
+	outDir := filepath.Join(dir, "output")
+	if err := os.MkdirAll(outDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	fakeBin := filepath.Join(dir, "flux")
+	// Fake flux binary: parse --output flag, create the file.
+	fakeContent := `#!/usr/bin/env bash
+set -euo pipefail
+output=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --output) output="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+touch "$output"
+`
+	if err := os.WriteFile(fakeBin, []byte(fakeContent), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	b := &lens.FluxBackend{
+		BinaryPath: fakeBin,
+		Model:      "schnell",
+		OutputDir:  outDir,
+	}
+
+	req := lens.GenerateRequest{
+		Prompt: "a mountain lake at sunrise",
+		Width:  512,
+		Height: 512,
+		Steps:  2,
+	}
+
+	result, err := b.Txt2Img(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Txt2Img error: %v", err)
+	}
+
+	if result.BackendName != "flux-schnell" {
+		t.Errorf("BackendName = %q, want %q", result.BackendName, "flux-schnell")
+	}
+	if result.Width != 512 {
+		t.Errorf("Width = %d, want 512", result.Width)
+	}
+	if result.Steps != 2 {
+		t.Errorf("Steps = %d, want 2", result.Steps)
+	}
+	if result.Model != "black-forest-labs/FLUX.1-schnell" {
+		t.Errorf("Model = %q", result.Model)
+	}
+	if !strings.HasSuffix(result.OutputPath, ".png") {
+		t.Errorf("OutputPath %q should end with .png", result.OutputPath)
+	}
+	if result.Elapsed <= 0 {
+		t.Error("Elapsed should be > 0")
+	}
+}
+
+// TestFluxBackendFailure verifies error propagation when the binary exits non-zero.
+func TestFluxBackendFailure(t *testing.T) {
+	dir := t.TempDir()
+	fakeBin := filepath.Join(dir, "flux")
+	if err := os.WriteFile(fakeBin, []byte("#!/usr/bin/env bash\nexit 1\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	b := &lens.FluxBackend{BinaryPath: fakeBin, OutputDir: dir}
+	_, err := b.Txt2Img(context.Background(), lens.GenerateRequest{Prompt: "test"})
+	if err == nil {
+		t.Fatal("expected error from failing binary, got nil")
+	}
+}
+
+// TestCameraPrompt ensures the prompt string is non-empty.
+func TestCameraPrompt(t *testing.T) {
+	p := lens.CameraPrompt()
+	if p == "" {
+		t.Error("CameraPrompt() returned empty string")
+	}
+}
+
 // TestGenerateResultFields spot-checks the struct layout.
 func TestGenerateResultFields(t *testing.T) {
 	result := &lens.GenerateResult{
