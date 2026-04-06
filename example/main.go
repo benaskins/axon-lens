@@ -1,44 +1,49 @@
 //go:build ignore
 
-// Example: generate an image with FLUX.1 and save it to local storage.
+// Example: generate an image with SDXL-Turbo or FLUX.1 via the Backend interface.
+//
+// Usage:
+//
+//	go run example/main.go               # SDXL-Turbo, 512x512
+//	go run example/main.go flux          # FLUX.1 Schnell, 1024x1024
 package main
 
 import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	lens "github.com/benaskins/axon-lens"
 )
 
 func main() {
-	// Configure the FLUX.1 generator (requires flux.swift CLI installed).
-	gen := &lens.FluxGenerator{
-		BinaryPath: "flux",
-		Model:      "schnell",
-		Width:      1024,
-		Height:     1024,
-		Steps:      4,
-		Quantize:   true,
+	var backend lens.Backend
+	req := lens.GenerateRequest{
+		Prompt: "a red fox sitting in a snowy forest at dusk",
+		Width:  512,
+		Height: 512,
+		Steps:  1,
 	}
 
-	// Generate an image from a text prompt.
+	if len(os.Args) > 1 && os.Args[1] == "flux" {
+		backend = lens.NewFluxBackend()
+		req.Width = 1024
+		req.Height = 1024
+		req.Steps = 4
+	} else {
+		backend = lens.NewSDXLBackend()
+	}
+
 	ctx := context.Background()
-	data, err := gen.GenerateImage(ctx, "a red fox sitting in a snowy forest at dusk")
+	result, err := backend.Txt2Img(ctx, req)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Save to local storage (creates thumbnails automatically).
-	store, err := lens.NewImageStore("/tmp/axon-lens-images")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	id, err := store.Save(data)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("saved image: %s\n", id)
+	fmt.Printf("backend:  %s\n", result.BackendName)
+	fmt.Printf("model:    %s\n", result.Model)
+	fmt.Printf("size:     %dx%d\n", result.Width, result.Height)
+	fmt.Printf("elapsed:  %s\n", result.Elapsed)
+	fmt.Printf("output:   %s\n", result.OutputPath)
 }
